@@ -194,18 +194,55 @@ class CellGrouper:
         if len(group_info['cells']) < 2:
             return False
 
-        # Must either have parameters OR return values (otherwise it's just isolated code)
-        has_io = bool(group_info['parameters']) or bool(group_info['returns'])
+        # Check 1: Reject if any cell in the group has hardcoded paths
+        for cell_idx in group_info['cells']:
+            cell_analysis = next((a for a in self.analysis_results if a['index'] == cell_idx), None)
+            if cell_analysis and cell_analysis.get('has_hardcoded_paths'):
+                return False
 
-        # Or must define at least 2 variables (doing meaningful work)
-        does_work = len(group_info['variables_defined']) >= 2
+        # Check 2: Reject if cells BEFORE this group depend on it (forward dependency)
+        # This means the function can't be extracted standalone
+        min_cell_idx = min(group_info['cells'])
+        for analysis in self.analysis_results:
+            if analysis['index'] < min_cell_idx:
+                # Check if this earlier cell depends on any cell in our group
+                for dep in analysis.get('depends_on', []):
+                    if dep['cell_index'] in group_info['cells']:
+                        # Earlier cell depends on our group - can't extract
+                        return False
 
-        if not (has_io or does_work):
-            return False
+        # Check 2b: Reject if function uses undefined external dependencies
+        # (e.g., calls functions or uses variables not available in scope)
+        # Collect ALL variables/functions available in the notebook scope
+        all_available = set()
+        for analysis in self.analysis_results:
+            # Only include cells BEFORE this group (sequential execution)
+            if analysis['index'] < min_cell_idx:
+                all_available.update(analysis['variables_defined'])
 
-        # Check for execution order issues within the group
+        # Check if this group's external dependencies are available
+        missing_deps = group_info['parameters']  # Parameters = unresolved external deps
+        if missing_deps:
+            # These should either be function parameters OR available from earlier cells
+            # If they're not parameters and not available earlier, function is broken
+            for param in missing_deps:
+                if param not in all_available:
+                    # This is a TRUE parameter that must be passed in - OK
+                    pass
+                # If it IS available, it's not really a parameter - recalculate
+
+            # Actually, simpler check: if function has NO parameters AND NO returns,
+            # but uses external dependencies, it's likely broken
+            if not group_info['parameters'] and not group_info['returns']:
+                # Check if external deps exist but were incorrectly filtered
+                for cell_idx in group_info['cells']:
+                    cell_analysis = next((a for a in self.analysis_results if a['index'] == cell_idx), None)
+                    if cell_analysis and cell_analysis['external_dependencies']:
+                        # Has external deps but no parameters/returns - broken
+                        return False
+
+        # Check 3: Execution order issues within the group
         for i, cell_idx in enumerate(group_info['cells']):
-            # Find the analysis for this cell
             cell_analysis = next((a for a in self.analysis_results if a['index'] == cell_idx), None)
             if not cell_analysis:
                 continue
@@ -213,11 +250,57 @@ class CellGrouper:
             # Check if this cell depends on later cells IN THE SAME GROUP
             for dep in cell_analysis.get('depends_on', []):
                 if dep['cell_index'] in group_info['cells']:
-                    # Find position in group
                     dep_position = group_info['cells'].index(dep['cell_index'])
                     if dep_position > i:
-                        # Backward dependency within group - bad
                         return False
+
+        # Check 4: Must have meaningful I/O
+        has_parameters = bool(group_info['parameters'])
+        has_returns = bool(group_info['returns'])
+
+        # If function has neither parameters nor returns, it's likely broken or useless
+        if not has_parameters and not has_returns:
+            return False
+
+        # Check 5: Must define at least 2 variables AND actually use them
+        # (to avoid extracting dead code like unused config values)
+        if not self._has_meaningful_work(group_info):
+            return False
+
+        return True
+
+    def _has_meaningful_work(self, group_info: Dict[str, Any]) -> bool:
+        """Check if a group does meaningful work beyond just defining variables.
+
+        Args:
+            group_info: Analyzed group information
+
+        Returns:
+            True if group has meaningful work
+        """
+        # Collect all variables defined and used within the group
+        all_defined = set()
+        all_used = set()
+
+        for cell_idx in group_info['cells']:
+            cell_analysis = next((a for a in self.analysis_results if a['index'] == cell_idx), None)
+            if not cell_analysis:
+                continue
+
+            all_defined.update(cell_analysis['variables_defined'])
+            all_used.update(cell_analysis['variables_used'])
+
+        # Variables that are defined but never used (dead code)
+        dead_code = all_defined - all_used
+
+        # If more than half of defined variables are dead code, not meaningful
+        if len(all_defined) > 0 and len(dead_code) / len(all_defined) > 0.5:
+            return False
+
+        # Must define at least 2 variables that are actually used
+        used_definitions = all_defined - dead_code
+        if len(used_definitions) < 2:
+            return False
 
         return True
 
@@ -247,17 +330,28 @@ class CellGrouper:
         Returns:
             True if groups should be merged
         """
+        # Don't merge if combined group would be too large (max 4 cells per function)
+        combined_size = len(group1['cells']) + len(group2['cells'])
+        if combined_size > 4:
+            return False
+
         max_cell1 = max(group1['cells'])
         min_cell2 = min(group2['cells'])
         gap = min_cell2 - max_cell1
 
-        # Don't merge if groups are too far apart (more than 4 cells between them)
-        if gap > 4:
+        # Don't merge if groups are too far apart (more than 2 cells between them)
+        if gap > 2:
             return False
 
         # Don't merge if either group has backward dependencies (execution order issues)
         if self._has_execution_order_issues(group1) or self._has_execution_order_issues(group2):
             return False
+
+        # Don't merge if either group contains function definitions
+        # (to avoid nested function definitions)
+        for analysis in group1['analysis'] + group2['analysis']:
+            if analysis['functions_defined']:
+                return False
 
         # Always merge utility cells if they're adjacent
         if (group1['category'] == 'utility' or group2['category'] == 'utility') and gap <= 2:
@@ -314,21 +408,18 @@ class CellGrouper:
             all_defined.update(analysis['variables_defined'])
             all_external.update(analysis['external_dependencies'])
 
-        # Collect all imports from the entire notebook to exclude from parameters
-        all_imports = set()
+        # Collect all variables defined OUTSIDE the group across entire notebook
+        # This includes: imports, functions, and variables from other cells
+        all_notebook_definitions = set()
         for result in self.analysis_results:
-            all_imports.update(result['imports'])
-            # Also add common imported names
-            for imp in result['imports']:
-                # Extract module/function names from imports
-                if '.' in imp:
-                    parts = imp.split('.')
-                    all_imports.update(parts)
+            if result['index'] not in cells:  # Not in our group
+                all_notebook_definitions.update(result['variables_defined'])
 
         # Parameters are external dependencies that are NOT:
         # 1. Defined within the group
-        # 2. Imported from modules
-        parameters = all_external - all_defined - all_imports
+        # 2. Defined elsewhere in the notebook (imports, other functions, other variables)
+        # The remaining are TRUE parameters that must be passed in
+        parameters = all_external - all_defined - all_notebook_definitions
 
         # Returns are variables defined that are used by later cells
         # (we'll need to check this against cells that come after the group)

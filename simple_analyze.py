@@ -37,23 +37,45 @@ class CellAnalyzer:
             defined_in_cell = set()
             used_before_defined = set()
 
+            # Collect function parameters and loop variables (they're local, not external)
+            local_scope_vars = set()
+            for node in ast.walk(tree):
+                # Function parameters
+                if isinstance(node, ast.FunctionDef):
+                    for arg in node.args.args:
+                        local_scope_vars.add(arg.arg)
+                # Loop variables: for var in ...
+                elif isinstance(node, (ast.For, ast.comprehension)):
+                    if isinstance(node.target, ast.Name):
+                        local_scope_vars.add(node.target.id)
+                    elif isinstance(node.target, (ast.Tuple, ast.List)):
+                        for elt in node.target.elts:
+                            if isinstance(elt, ast.Name):
+                                local_scope_vars.add(elt.id)
+
             # Process statements in order to track what's used vs defined
             for node in ast.walk(tree):
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
                     if isinstance(node, ast.Import):
+                        # import pandas as pd
+                        imported_names = [a.asname if a.asname else a.name for a in node.names]
                         analysis['imports'].extend([a.name for a in node.names])
-                        # Imports count as definitions
-                        defined_in_cell.update([a.name for a in node.names])
+                        analysis['variables_defined'].update(imported_names)
+                        defined_in_cell.update(imported_names)
                     else:
+                        # from sklearn.preprocessing import StandardScaler
                         module = node.module or ''
                         analysis['imports'].append(module)
                         # Track imported names as defined
                         if node.names:
                             for alias in node.names:
                                 if alias.name != '*':
-                                    defined_in_cell.add(alias.asname if alias.asname else alias.name)
+                                    imported_name = alias.asname if alias.asname else alias.name
+                                    analysis['variables_defined'].add(imported_name)
+                                    defined_in_cell.add(imported_name)
                 elif isinstance(node, ast.FunctionDef):
                     analysis['functions_defined'].append(node.name)
+                    analysis['variables_defined'].add(node.name)
                     defined_in_cell.add(node.name)
 
             # First pass: collect ALL definitions in the cell
@@ -90,12 +112,12 @@ class CellAnalyzer:
                                 analysis['has_hardcoded_paths'] = True
                                 analysis['hardcoded_values'].append({'type': 'path', 'value': node.value.value})
 
-            # Filter out built-ins and common library functions
+            # Filter out built-ins, common library functions, and local scope variables
             builtins = {'np', 'plt', 'pd', 'print', 'len', 'range', 'enumerate',
                        'zip', 'map', 'filter', 'sum', 'max', 'min', 'abs', 'round',
                        'int', 'float', 'str', 'list', 'dict', 'set', 'tuple',
                        'True', 'False', 'None'}
-            analysis['external_dependencies'] = used_before_defined - builtins
+            analysis['external_dependencies'] = used_before_defined - builtins - local_scope_vars
 
         except:
             pass

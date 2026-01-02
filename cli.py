@@ -255,8 +255,8 @@ def extract(notebook, show_code):
         console.print(f"  - Multiple execution order problems detected")
         console.print(f"  - Cells depend on later cells (backward dependencies)")
         console.print()
-        console.print("[dim]Fix the execution order issues first, then try extraction.")
-        console.print("Run 'nb2prod analyze' to see specific problems.[/dim]")
+        console.print("[dim]Fix the execution order issues first, then try extraction. "
+                     "Run 'nb2prod analyze' to see specific problems.[/dim]")
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
@@ -285,10 +285,38 @@ def extract(notebook, show_code):
     groups = grouper.group_cells()
 
     if not groups:
-        console.print("[yellow]No function candidates found[/yellow]")
+        console.print("[yellow]No Production-Ready Functions Found[/yellow]")
         console.print()
-        console.print("[dim]This notebook may not have clear function boundaries.")
-        console.print("Consider organizing code into logical sections first.[/dim]")
+
+        # Provide specific reasons why
+        reasons = []
+
+        # Check for hardcoded paths
+        cells_with_paths = [a for a in results if a['has_hardcoded_paths']]
+        if cells_with_paths:
+            reasons.append(f"  - {len(cells_with_paths)} cell(s) contain hardcoded file paths")
+
+        # Check for execution order issues
+        exec_issues = [issue for issue in summary['issues'] if issue['type'] == 'execution_order']
+        if exec_issues:
+            reasons.append(f"  - {len(exec_issues)} execution order problem(s) detected")
+
+        # Check if cells are too isolated
+        cells_with_deps = sum(1 for a in results if a.get('depends_on', []))
+        if cells_with_deps < len(results) * 0.3:
+            reasons.append("  - Cells appear too isolated (no clear workflow)")
+
+        if reasons:
+            console.print("Reasons:")
+            for reason in reasons:
+                console.print(reason)
+            console.print()
+            console.print("[dim]Fix these issues first (run 'nb2prod analyze' for details), "
+                         "then try extraction again.[/dim]")
+        else:
+            console.print("[dim]This notebook may not have clear function boundaries.")
+            console.print("Consider organizing code into logical sections with clear inputs/outputs.[/dim]")
+
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
