@@ -17,6 +17,12 @@ nb2prod analyze notebook.ipynb
 # Detailed analysis
 nb2prod analyze notebook.ipynb --detailed
 
+# Extract function abstraction candidates at a high level
+nb2prod extract notebook.ipynb
+
+# Extract function abstraction candidates and show code
+nb2prod extract notebook.ipynb --show-code
+
 # Convert to production code (coming soon)
 nb2prod convert notebook.ipynb --output ./prod
 ```
