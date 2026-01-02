@@ -56,25 +56,35 @@ class CellAnalyzer:
                     analysis['functions_defined'].append(node.name)
                     defined_in_cell.add(node.name)
 
-            # Now do a more careful analysis with statement order
+            # First pass: collect ALL definitions in the cell
             for stmt in tree.body:
-                # Track what's used in this statement
-                for node in ast.walk(stmt):
-                    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
-                        var_name = node.id
-                        analysis['variables_used'].add(var_name)
-                        # If used before being defined, it's an external dependency
-                        if var_name not in defined_in_cell:
-                            used_before_defined.add(var_name)
-
-                # Track what's defined in this statement
                 for node in ast.walk(stmt):
                     if isinstance(node, ast.Assign):
                         for target in node.targets:
                             if isinstance(target, ast.Name):
                                 analysis['variables_defined'].add(target.id)
                                 defined_in_cell.add(target.id)
-                        # Check for hardcoded paths
+                            # Handle tuple unpacking: (a, b) = ...
+                            elif isinstance(target, (ast.Tuple, ast.List)):
+                                for elt in target.elts:
+                                    if isinstance(elt, ast.Name):
+                                        analysis['variables_defined'].add(elt.id)
+                                        defined_in_cell.add(elt.id)
+
+            # Second pass: identify external dependencies and hardcoded values
+            for stmt in tree.body:
+                # Track what's used in this statement
+                for node in ast.walk(stmt):
+                    if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                        var_name = node.id
+                        analysis['variables_used'].add(var_name)
+                        # If used before being defined in the cell, it's an external dependency
+                        if var_name not in defined_in_cell:
+                            used_before_defined.add(var_name)
+
+                # Check for hardcoded paths
+                for node in ast.walk(stmt):
+                    if isinstance(node, ast.Assign):
                         if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
                             if '/' in node.value.value or '.csv' in node.value.value or '.pkl' in node.value.value:
                                 analysis['has_hardcoded_paths'] = True

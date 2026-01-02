@@ -21,7 +21,9 @@ setup(
         "parser",
         "simple_analyze",
         "cli",
-        "demo"
+        "demo",
+        "grouper",
+        "extractor"
     ],
     install_requires=[
         "nbformat>=5.0.0",

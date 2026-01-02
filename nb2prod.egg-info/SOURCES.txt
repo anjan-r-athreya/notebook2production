@@ -1,6 +1,8 @@
 README.md
 cli.py
 demo.py
+extractor.py
+grouper.py
 parser.py
 setup.py
 simple_analyze.py

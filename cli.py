@@ -10,6 +10,8 @@ from rich import box
 
 from parser import NotebookParser
 from simple_analyze import CellAnalyzer
+from grouper import CellGrouper
+from extractor import FunctionExtractor
 
 console = Console()
 
@@ -193,6 +195,143 @@ def analyze(notebook, detailed):
 
         if not has_dependencies:
             console.print("  [dim]No cross-cell dependencies detected.[/dim]")
+
+        console.print()
+
+    console.print("=" * 60, style="bold")
+    console.print()
+
+
+@cli.command()
+@click.argument('notebook', type=click.Path(exists=True))
+@click.option('--show-code', is_flag=True, help='Show generated function code')
+def extract(notebook, show_code):
+    """Extract function suggestions from notebook.
+
+    Args:
+        notebook: Path to the .ipynb file
+        show_code: Display the generated function code
+    """
+    notebook_path = Path(notebook)
+
+    # Header
+    console.print()
+    console.print("=" * 60, style="bold")
+    console.print("FUNCTION EXTRACTION", style="bold", justify="center")
+    console.print("=" * 60, style="bold")
+    console.print()
+
+    console.print(f"[bold]Analyzing:[/bold] {notebook_path.name}")
+    console.print()
+
+    # Parse and analyze
+    try:
+        parser = NotebookParser(str(notebook_path))
+        data = parser.parse()
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        return
+
+    code_cells = parser.get_code_cells()
+    if not code_cells:
+        console.print("[yellow]No code cells found in notebook[/yellow]")
+        return
+
+    # Analyze cells
+    analyzer = CellAnalyzer(code_cells)
+    results = analyzer.analyze_all()
+    summary = analyzer.get_summary()
+
+    # Check notebook quality from Phase 1 analysis
+    stats = data['stats']
+    has_execution_issues = any(issue['type'] == 'execution_order' for issue in summary['issues'])
+    has_critical_issues = len([i for i in summary['issues'] if i['type'] == 'execution_order']) > 1
+
+    # Don't extract from broken notebooks
+    if has_critical_issues:
+        console.print("[yellow]Notebook Not Suitable for Extraction[/yellow]")
+        console.print()
+        console.print("This notebook has critical issues that prevent function extraction:")
+        console.print(f"  - Multiple execution order problems detected")
+        console.print(f"  - Cells depend on later cells (backward dependencies)")
+        console.print()
+        console.print("[dim]Fix the execution order issues first, then try extraction.")
+        console.print("Run 'nb2prod analyze' to see specific problems.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    # Group cells
+    grouper = CellGrouper(code_cells, results, notebook_stats=stats)
+
+    # Check if educational notebook
+    if grouper.is_educational:
+        console.print("[yellow]Educational/Tutorial Notebook Detected[/yellow]")
+        console.print()
+        console.print("This notebook appears to be educational with:")
+        console.print(f"  - {stats['markdown_cells']}/{stats['total_cells']} markdown cells (explanatory content)")
+        console.print("  - Repetitive variable patterns (parallel examples)")
+        console.print("  - Self-contained code cells (teaching concepts)")
+        console.print()
+        console.print("[dim]Function extraction works best on production-style notebooks "
+                     "where cells represent a sequential workflow, not parallel examples. "
+                     "This notebook is designed for learning, not production deployment.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    groups = grouper.group_cells()
+
+    if not groups:
+        console.print("[yellow]No function candidates found[/yellow]")
+        console.print()
+        console.print("[dim]This notebook may not have clear function boundaries.")
+        console.print("Consider organizing code into logical sections first.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    console.print(f"[bold]Found {len(groups)} function candidate(s):[/bold]")
+    console.print()
+
+    # Extract functions
+    extractor = FunctionExtractor(code_cells, groups)
+    functions = extractor.extract_functions()
+
+    # Display function suggestions
+    for i, func in enumerate(functions, 1):
+        # Create a panel for each function
+        cells_str = ', '.join(map(str, func['cells']))
+
+        content_lines = [
+            f"[bold cyan]{func['signature']}[/bold cyan]",
+            "",
+            f"[dim]Category:[/dim] {func['category']}",
+            f"[dim]Source cells:[/dim] {cells_str}",
+        ]
+
+        if func['parameters']:
+            content_lines.append(f"[dim]Parameters:[/dim] {', '.join(func['parameters'])}")
+
+        if func['returns']:
+            content_lines.append(f"[dim]Returns:[/dim] {', '.join(func['returns'])}")
+
+        console.print(Panel(
+            '\n'.join(content_lines),
+            title=f"Function {i}: {func['name']}",
+            border_style="cyan"
+        ))
+
+        # Show code if requested
+        if show_code:
+            console.print()
+            console.print("[dim]Generated Code:[/dim]")
+            console.print()
+            console.print(f"[green]{func['full_code']}[/green]")
+            console.print()
 
         console.print()
 

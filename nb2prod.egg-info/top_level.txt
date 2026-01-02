@@ -1,4 +1,6 @@
 cli
 demo
+extractor
+grouper
 parser
 simple_analyze
