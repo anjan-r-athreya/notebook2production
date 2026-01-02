@@ -1,0 +1,12 @@
+README.md
+cli.py
+demo.py
+parser.py
+setup.py
+simple_analyze.py
+nb2prod.egg-info/PKG-INFO
+nb2prod.egg-info/SOURCES.txt
+nb2prod.egg-info/dependency_links.txt
+nb2prod.egg-info/entry_points.txt
+nb2prod.egg-info/requires.txt
+nb2prod.egg-info/top_level.txt

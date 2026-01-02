@@ -1,0 +1,2 @@
+[console_scripts]
+nb2prod = cli:cli
