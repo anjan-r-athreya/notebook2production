@@ -35,80 +35,76 @@ def analyze(notebook, detailed):
 
     # Header
     console.print()
-    console.print("=" * 60, style="bold blue")
-    console.print("nb2prod - Notebook Analysis", style="bold blue", justify="center")
-    console.print("=" * 60, style="bold blue")
+    console.print("=" * 60, style="bold")
+    console.print("NOTEBOOK ANALYSIS", style="bold", justify="center")
+    console.print("=" * 60, style="bold")
     console.print()
 
     # Parse notebook
-    console.print(f"[bold cyan]🔍 Analyzing notebook:[/bold cyan] {notebook_path.name}")
+    console.print(f"[bold]Analyzing:[/bold] {notebook_path.name}")
     console.print()
 
     try:
         parser = NotebookParser(str(notebook_path))
         data = parser.parse()
     except Exception as e:
-        console.print(f"[bold red]✗ Error parsing notebook:[/bold red] {e}")
+        console.print(f"[bold red]Error:[/bold red] {e}")
         return
-
-    # Display structure
-    stats = data['stats']
-    table = Table(title="📊 Notebook Structure", box=box.ROUNDED)
-    table.add_column("Metric", style="cyan")
-    table.add_column("Count", style="green", justify="right")
-
-    table.add_row("Code cells", str(stats['code_cells']))
-    table.add_row("Markdown cells", str(stats['markdown_cells']))
-    table.add_row("Empty cells", str(stats['empty_cells']))
-    table.add_row("Total cells", str(stats['total_cells']))
-
-    console.print(table)
-    console.print()
 
     # Analyze code
     code_cells = parser.get_code_cells()
+    stats = data['stats']
 
     if not code_cells:
-        console.print("[yellow]⚠️  No code cells found in notebook[/yellow]")
+        console.print("[yellow]No code cells found in notebook[/yellow]")
         return
 
     analyzer = CellAnalyzer(code_cells)
     results = analyzer.analyze_all()
     summary = analyzer.get_summary()
 
-    # Display analysis summary
-    analysis_table = Table(title="📦 Code Analysis", box=box.ROUNDED)
-    analysis_table.add_column("Metric", style="cyan")
-    analysis_table.add_column("Count", style="green", justify="right")
-
-    analysis_table.add_row("Imports detected", str(summary['total_imports']))
-    analysis_table.add_row("Variables defined", str(summary['total_variables']))
-    analysis_table.add_row("Functions defined", str(summary['total_functions']))
-    analysis_table.add_row("Hardcoded values", str(summary['hardcoded_values_count']))
-
-    console.print(analysis_table)
+    # Display compact summary
+    console.print(f"[dim]Code cells: {stats['code_cells']} | "
+                  f"Functions: {summary['total_functions']} | "
+                  f"Imports: {summary['total_imports']}[/dim]")
     console.print()
 
     # Show imports if detailed
     if detailed and summary['imports_list']:
-        console.print("[bold cyan]📚 Imports:[/bold cyan]")
+        console.print("[bold]Dependencies:[/bold]")
         for imp in summary['imports_list']:
-            console.print(f"  • {imp}")
+            console.print(f"  - {imp}")
         console.print()
 
-    # Display issues
+    # Filter and display only actionable issues
     issues = summary['issues']
-    if issues:
-        console.print(f"[bold yellow]⚠️  Issues Found ({len(issues)}):[/bold yellow]")
+    actionable_issues = []
+
+    for issue in issues:
+        issue_type = issue['type']
+
+        # Skip "no functions" for notebooks with mostly markdown (likely educational)
+        if issue_type == 'no_functions':
+            markdown_ratio = stats['markdown_cells'] / max(stats['total_cells'], 1)
+            if markdown_ratio > 0.3:  # More than 30% markdown = likely educational
+                continue
+
+        actionable_issues.append(issue)
+
+    if actionable_issues:
+        console.print(f"[bold]Issues Requiring Attention:[/bold]")
         console.print()
 
-        for issue in issues:
+        for issue in actionable_issues:
             issue_type = issue['type']
 
             if issue_type == 'execution_order':
                 console.print(Panel(
-                    f"[yellow]{issue['message']}[/yellow]",
-                    title="Execution Order Issue",
+                    f"[yellow]{issue['message']}[/yellow]\n\n"
+                    f"[dim]Impact:[/dim] This cell depends on variables defined in a later cell. "
+                    f"The notebook will fail if cells are run sequentially from top to bottom.\n\n"
+                    f"[dim]Fix:[/dim] Reorder cells or ensure all dependencies are defined before use.",
+                    title="Execution Order Problem",
                     border_style="yellow"
                 ))
 
@@ -118,86 +114,89 @@ def analyze(notebook, detailed):
                     cells_str += f" ... and {len(issue['cells']) - 10} more"
 
                 console.print(Panel(
-                    f"[yellow]{issue['message']}[/yellow]\n"
-                    f"Cells: {cells_str}",
-                    title="Hardcoded Paths Detected",
+                    f"[yellow]Found hardcoded file paths in cells: {cells_str}[/yellow]\n\n"
+                    f"[dim]Impact:[/dim] Code won't be portable across different environments.\n\n"
+                    f"[dim]Fix:[/dim] Move paths to a configuration file or use relative paths.",
+                    title="Configuration Issue",
                     border_style="yellow"
                 ))
 
             elif issue_type == 'no_functions':
                 console.print(Panel(
-                    f"[yellow]{issue['message']}[/yellow]\n"
-                    "Consider organizing code into reusable functions.",
+                    f"[yellow]{issue['message']}[/yellow]\n\n"
+                    f"[dim]Impact:[/dim] Code is harder to test, reuse, and maintain.\n\n"
+                    f"[dim]Fix:[/dim] Extract logical blocks into functions with clear inputs/outputs.",
                     title="Code Organization",
                     border_style="yellow"
                 ))
 
             console.print()
     else:
-        console.print("[bold green]✓ No major issues found![/bold green]")
+        console.print("[green]No critical issues detected.[/green]")
         console.print()
 
-    # Calculate production readiness score
+    # Calculate production readiness score based on actionable issues only
     score = 10
-    for issue in issues:
+    for issue in actionable_issues:
         if issue['type'] == 'execution_order':
-            score -= 2
+            score -= 4  # Critical issue
         elif issue['type'] == 'hardcoded_paths':
-            score -= 2
+            score -= 2  # Moderate issue
         elif issue['type'] == 'no_functions':
-            score -= 3
+            score -= 2  # Moderate issue
 
     score = max(0, min(10, score))
 
-    # Determine color and emoji based on score
+    # Determine assessment based on score
     if score >= 8:
         score_color = "green"
-        emoji = "🎉"
-        message = "Excellent! This notebook is production-ready."
-    elif score >= 5:
+        assessment = "Ready for production use with minimal changes."
+    elif score >= 6:
         score_color = "yellow"
-        emoji = "⚠️"
-        message = "Moderate. Some improvements needed."
+        assessment = "Requires improvements before production deployment."
     else:
         score_color = "red"
-        emoji = "❌"
-        message = "Needs work. Multiple issues to address."
+        assessment = "Significant refactoring needed for production use."
 
-    # Display score
-    score_panel = Panel(
-        f"[bold {score_color}]{score}/10[/bold {score_color}]\n{message}",
-        title=f"{emoji} Production Readiness Score",
-        border_style=score_color,
-        box=box.DOUBLE
-    )
-    console.print(score_panel)
-    console.print()
+    # Display score only if there are actionable issues
+    if actionable_issues:
+        score_panel = Panel(
+            f"[bold {score_color}]{score}/10[/bold {score_color}]\n\n{assessment}",
+            title="Production Readiness Assessment",
+            border_style=score_color,
+            box=box.ROUNDED
+        )
+        console.print(score_panel)
+        console.print()
 
     # Show detailed cell-by-cell analysis if requested
     if detailed:
-        console.print("[bold cyan]📋 Detailed Cell Analysis:[/bold cyan]")
+        console.print("[bold]Cell Dependencies:[/bold]")
         console.print()
 
+        has_dependencies = False
         for analysis in results:
-            if analysis['variables_defined'] or analysis['imports'] or analysis['functions_defined']:
+            if analysis['depends_on'] or analysis['external_dependencies']:
+                has_dependencies = True
                 cell_info = []
 
-                if analysis['imports']:
-                    cell_info.append(f"Imports: {', '.join(analysis['imports'][:3])}")
-                if analysis['variables_defined']:
-                    vars_list = list(analysis['variables_defined'])[:3]
-                    cell_info.append(f"Defines: {', '.join(vars_list)}")
-                if analysis['functions_defined']:
-                    cell_info.append(f"Functions: {', '.join(analysis['functions_defined'])}")
+                if analysis['external_dependencies']:
+                    deps_list = list(analysis['external_dependencies'])[:5]
+                    cell_info.append(f"Uses: {', '.join(deps_list)}")
+
                 if analysis['depends_on']:
                     deps = [str(d['cell_index']) for d in analysis['depends_on'][:3]]
-                    cell_info.append(f"Depends on cells: {', '.join(deps)}")
+                    cell_info.append(f"From cells: {', '.join(deps)}")
 
-                console.print(f"  [cyan]Cell {analysis['index']}:[/cyan] {' | '.join(cell_info)}")
+                if cell_info:
+                    console.print(f"  Cell {analysis['index']}: {' | '.join(cell_info)}")
+
+        if not has_dependencies:
+            console.print("  [dim]No cross-cell dependencies detected.[/dim]")
 
         console.print()
 
-    console.print("=" * 60, style="bold blue")
+    console.print("=" * 60, style="bold")
     console.print()
 
 
