@@ -2,6 +2,7 @@ README.md
 cli.py
 demo.py
 extractor.py
+generator.py
 grouper.py
 parser.py
 setup.py

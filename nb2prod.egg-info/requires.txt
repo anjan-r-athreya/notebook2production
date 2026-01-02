@@ -1,6 +1,7 @@
 nbformat>=5.0.0
 click>=8.0.0
 rich>=10.0.0
+pyyaml>=6.0.0
 
 [dev]
 pytest>=7.0.0

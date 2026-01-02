@@ -367,5 +367,129 @@ def extract(notebook, show_code):
     console.print()
 
 
+@cli.command()
+@click.argument('notebook', type=click.Path(exists=True))
+@click.option('--output', '-o', default='./output', help='Output directory for generated project')
+def convert(notebook, output):
+    """Convert notebook to production-ready Python project.
+
+    Args:
+        notebook: Path to the .ipynb file
+        output: Directory to generate project in
+    """
+    notebook_path = Path(notebook)
+
+    # Header
+    console.print()
+    console.print("=" * 60, style="bold")
+    console.print("PROJECT GENERATION", style="bold", justify="center")
+    console.print("=" * 60, style="bold")
+    console.print()
+
+    console.print(f"[bold]Converting:[/bold] {notebook_path.name}")
+    console.print(f"[bold]Output:[/bold] {output}")
+    console.print()
+
+    # Parse and analyze
+    try:
+        parser = NotebookParser(str(notebook_path))
+        data = parser.parse()
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        return
+
+    code_cells = parser.get_code_cells()
+    stats = data['stats']
+
+    if not code_cells:
+        console.print("[yellow]No code cells found in notebook[/yellow]")
+        return
+
+    # Analyze cells
+    analyzer = CellAnalyzer(code_cells)
+    results = analyzer.analyze_all()
+    summary = analyzer.get_summary()
+
+    # Check notebook quality
+    has_critical_issues = len([i for i in summary['issues'] if i['type'] == 'execution_order']) > 1
+
+    if has_critical_issues:
+        console.print("[yellow]Notebook Not Suitable for Conversion[/yellow]")
+        console.print()
+        console.print("This notebook has critical issues that prevent conversion:")
+        console.print(f"  - Multiple execution order problems detected")
+        console.print(f"  - Cells depend on later cells (backward dependencies)")
+        console.print()
+        console.print("[dim]Fix the execution order issues first, then try conversion. "
+                     "Run 'nb2prod analyze' to see specific problems.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    # Group cells
+    grouper = CellGrouper(code_cells, results, notebook_stats=stats)
+
+    # Check if educational notebook
+    if grouper.is_educational:
+        console.print("[yellow]Educational/Tutorial Notebook[/yellow]")
+        console.print()
+        console.print("This appears to be an educational notebook.")
+        console.print("Conversion works best on production-style notebooks.")
+        console.print()
+        console.print("[dim]Continue anyway? The generated project may not be useful.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    groups = grouper.group_cells()
+
+    if not groups:
+        console.print("[yellow]No Functions to Convert[/yellow]")
+        console.print()
+        console.print("Could not identify extractable functions in this notebook.")
+        console.print()
+        console.print("[dim]Run 'nb2prod extract' to see why.[/dim]")
+        console.print()
+        console.print("=" * 60, style="bold")
+        console.print()
+        return
+
+    # Extract functions
+    extractor = FunctionExtractor(code_cells, groups)
+    functions = extractor.extract_functions()
+
+    console.print(f"[bold]Extracted {len(functions)} function(s)[/bold]")
+    console.print()
+
+    # Generate project
+    from generator import ProjectGenerator
+
+    generator = ProjectGenerator(
+        functions=functions,
+        imports=summary['imports_list'],
+        output_dir=output
+    )
+
+    try:
+        generator.generate_project()
+        console.print()
+        console.print("[green]Project generated successfully![/green]")
+        console.print()
+        console.print(f"[bold]Next steps:[/bold]")
+        console.print(f"  1. cd {output}")
+        console.print(f"  2. pip install -r requirements.txt")
+        console.print(f"  3. python main.py")
+        console.print()
+    except Exception as e:
+        console.print(f"[bold red]Error generating project:[/bold red] {e}")
+        import traceback
+        traceback.print_exc()
+
+    console.print("=" * 60, style="bold")
+    console.print()
+
+
 if __name__ == '__main__':
     cli()

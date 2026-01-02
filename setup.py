@@ -23,12 +23,14 @@ setup(
         "cli",
         "demo",
         "grouper",
-        "extractor"
+        "extractor",
+        "generator"
     ],
     install_requires=[
         "nbformat>=5.0.0",
         "click>=8.0.0",
         "rich>=10.0.0",
+        "pyyaml>=6.0.0",
     ],
     extras_require={
         "dev": [

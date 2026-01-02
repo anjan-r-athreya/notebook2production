@@ -18,6 +18,7 @@ Description-Content-Type: text/markdown
 Requires-Dist: nbformat>=5.0.0
 Requires-Dist: click>=8.0.0
 Requires-Dist: rich>=10.0.0
+Requires-Dist: pyyaml>=6.0.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=3.0.0; extra == "dev"

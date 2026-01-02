@@ -1,6 +1,7 @@
 cli
 demo
 extractor
+generator
 grouper
 parser
 simple_analyze
