@@ -1,9 +1,8 @@
-README.md
 cli.py
-demo.py
 extractor.py
 generator.py
 grouper.py
+llm_refactor.py
 parser.py
 setup.py
 simple_analyze.py

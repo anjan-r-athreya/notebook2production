@@ -19,6 +19,7 @@ Requires-Dist: nbformat>=5.0.0
 Requires-Dist: click>=8.0.0
 Requires-Dist: rich>=10.0.0
 Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: anthropic>=0.18.0
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-cov>=3.0.0; extra == "dev"
@@ -27,46 +28,9 @@ Requires-Dist: flake8>=4.0.0; extra == "dev"
 Dynamic: author
 Dynamic: author-email
 Dynamic: classifier
-Dynamic: description
 Dynamic: description-content-type
 Dynamic: home-page
 Dynamic: provides-extra
 Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary
-
-# nb2prod
-
-Convert messy Jupyter notebooks to production-ready Python code.
-
-## Installation
-
-```bash
-pip install -e .
-```
-
-## Usage
-
-```bash
-# Analyze a notebook
-nb2prod analyze notebook.ipynb
-
-# Detailed analysis
-nb2prod analyze notebook.ipynb --detailed
-
-# Extract function abstraction candidates at a high level
-nb2prod extract notebook.ipynb
-
-# Extract function abstraction candidates and show code
-nb2prod extract notebook.ipynb --show-code
-
-# Convert to production code (coming soon)
-nb2prod convert notebook.ipynb --output ./prod
-```
-
-## Features
-
-- AST-based code analysis
-- Dependency detection
-- Issue identification
-- Production readiness scoring

@@ -9,17 +9,19 @@ class ProjectGenerator:
     """Generates a complete Python project from notebook analysis."""
 
     def __init__(self, functions: List[Dict[str, Any]], imports: List[str],
-                 output_dir: str = "./output"):
+                 output_dir: str = "./output", use_llm_main: bool = False):
         """Initialize the generator.
 
         Args:
             functions: Extracted functions from FunctionExtractor
             imports: List of import statements from analyzer
             output_dir: Directory to generate project in
+            use_llm_main: Use LLM to generate enhanced main.py
         """
         self.functions = functions
         self.imports = imports
         self.output_dir = Path(output_dir)
+        self.use_llm_main = use_llm_main
 
     def generate_project(self) -> None:
         """Generate the complete project structure."""
@@ -187,6 +189,29 @@ class ProjectGenerator:
 
     def _generate_main(self) -> None:
         """Generate main.py CLI entry point."""
+        if self.use_llm_main:
+            self._generate_main_with_llm()
+        else:
+            self._generate_main_basic()
+
+    def _generate_main_with_llm(self) -> None:
+        """Generate enhanced main.py using LLM."""
+        try:
+            from llm_refactor import LLMRefactor
+
+            refactor = LLMRefactor()
+            main_code = refactor.generate_enhanced_main(self.functions, self.imports)
+
+            main_path = self.output_dir / 'main.py'
+            main_path.write_text(main_code)
+            main_path.chmod(0o755)
+        except Exception as e:
+            print(f"Warning: LLM main.py generation failed: {e}")
+            print("Falling back to basic main.py...")
+            self._generate_main_basic()
+
+    def _generate_main_basic(self) -> None:
+        """Generate basic main.py without LLM."""
         lines = [
             '#!/usr/bin/env python3',
             '"""Main CLI entry point for the generated project."""',

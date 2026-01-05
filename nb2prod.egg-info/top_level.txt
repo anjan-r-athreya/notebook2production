@@ -1,7 +1,7 @@
 cli
-demo
 extractor
 generator
 grouper
+llm_refactor
 parser
 simple_analyze

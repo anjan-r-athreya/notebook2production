@@ -21,16 +21,17 @@ setup(
         "parser",
         "simple_analyze",
         "cli",
-        "demo",
         "grouper",
         "extractor",
-        "generator"
+        "generator",
+        "llm_refactor"
     ],
     install_requires=[
         "nbformat>=5.0.0",
         "click>=8.0.0",
         "rich>=10.0.0",
         "pyyaml>=6.0.0",
+        "anthropic>=0.18.0",
     ],
     extras_require={
         "dev": [

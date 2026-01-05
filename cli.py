@@ -370,7 +370,8 @@ def extract(notebook, show_code):
 @cli.command()
 @click.argument('notebook', type=click.Path(exists=True))
 @click.option('--output', '-o', default='./output', help='Output directory for generated project')
-def convert(notebook, output):
+@click.option('--enhance', is_flag=True, help='Use Claude AI to enhance functions (requires ANTHROPIC_API_KEY)')
+def convert(notebook, output, enhance):
     """Convert notebook to production-ready Python project.
 
     Args:
@@ -463,13 +464,36 @@ def convert(notebook, output):
     console.print(f"[bold]Extracted {len(functions)} function(s)[/bold]")
     console.print()
 
+    # Enhance with LLM if requested
+    if enhance:
+        console.print("[bold]Enhancing functions with Claude AI...[/bold]")
+        console.print()
+
+        try:
+            from llm_refactor import LLMRefactor
+
+            refactor = LLMRefactor()
+            functions = refactor.enhance_functions(functions)
+
+            console.print("[green]Functions enhanced successfully![/green]")
+            console.print()
+        except ValueError as e:
+            console.print(f"[yellow]Warning:[/yellow] {e}")
+            console.print("[dim]Continuing with unenhanced functions...[/dim]")
+            console.print()
+        except Exception as e:
+            console.print(f"[yellow]Warning:[/yellow] Enhancement failed: {e}")
+            console.print("[dim]Continuing with unenhanced functions...[/dim]")
+            console.print()
+
     # Generate project
     from generator import ProjectGenerator
 
     generator = ProjectGenerator(
         functions=functions,
         imports=summary['imports_list'],
-        output_dir=output
+        output_dir=output,
+        use_llm_main=enhance
     )
 
     try:
