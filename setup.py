@@ -18,16 +18,7 @@ setup(
     author="Anjan Athreya",
     author_email="anjan.athreya@example.com",
     url="https://github.com/anjan-r-athreya/notebook2production",
-    packages=find_packages(),
-    py_modules=[
-        "parser",
-        "simple_analyze",
-        "cli",
-        "grouper",
-        "extractor",
-        "generator",
-        "llm_refactor",
-    ],
+    packages=find_packages(exclude=["tests", "tests.*", "examples", "docs"]),
     install_requires=[
         "nbformat>=5.0.0",
         "click>=8.0.0",
@@ -45,7 +36,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "nb2prod=cli:cli",
+            "nb2prod=nb2prod.cli:cli",
         ],
     },
     classifiers=[

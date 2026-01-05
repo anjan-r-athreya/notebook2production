@@ -8,10 +8,10 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 
-from parser import NotebookParser
-from simple_analyze import CellAnalyzer
-from grouper import CellGrouper
-from extractor import FunctionExtractor
+from .parser import NotebookParser
+from .analyzer import CellAnalyzer
+from .grouper import CellGrouper
+from .extractor import FunctionExtractor
 
 console = Console()
 
@@ -518,7 +518,7 @@ def convert(notebook, output, enhance):
         console.print()
 
         try:
-            from llm_refactor import LLMRefactor
+            from .llm_refactor import LLMRefactor
 
             refactor = LLMRefactor()
             functions = refactor.enhance_functions(functions)
@@ -535,7 +535,7 @@ def convert(notebook, output, enhance):
             console.print()
 
     # Generate project
-    from generator import ProjectGenerator
+    from .generator import ProjectGenerator
 
     generator = ProjectGenerator(
         functions=functions,

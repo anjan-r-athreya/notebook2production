@@ -1,8 +1,1 @@
-cli
-extractor
-generator
-grouper
-llm_refactor
-parser
-simple_analyze
-tests
+nb2prod

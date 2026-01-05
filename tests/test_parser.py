@@ -1,7 +1,7 @@
 """Tests for the notebook parser."""
 
 import pytest
-from parser import NotebookParser
+from nb2prod.parser import NotebookParser
 
 
 def test_parser_initialization(sample_notebook):

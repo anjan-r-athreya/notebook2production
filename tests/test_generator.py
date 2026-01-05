@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from generator import ProjectGenerator
+from nb2prod.generator import ProjectGenerator
 
 
 def test_generator_initialization(sample_functions, temp_output_dir):

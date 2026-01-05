@@ -1,0 +1,5 @@
+#!/bin/bash
+# Wrapper script for nb2prod CLI
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "$DIR/venv/bin/activate"
+python -m nb2prod.cli "$@"

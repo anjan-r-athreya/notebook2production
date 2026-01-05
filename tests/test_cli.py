@@ -2,7 +2,7 @@
 
 import pytest
 from click.testing import CliRunner
-from cli import cli
+from nb2prod.cli import cli
 
 
 def test_cli_version():

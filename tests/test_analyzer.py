@@ -1,12 +1,12 @@
 """Tests for the cell analyzer."""
 
 import pytest
-from simple_analyze import CellAnalyzer
+from nb2prod.analyzer import CellAnalyzer
 
 
 def test_analyzer_initialization(sample_notebook):
     """Test analyzer can be initialized."""
-    from parser import NotebookParser
+    from nb2prod.parser import NotebookParser
 
     parser = NotebookParser(sample_notebook)
     parser.parse()
@@ -18,7 +18,7 @@ def test_analyzer_initialization(sample_notebook):
 
 def test_analyzer_analyzes_cells(sample_notebook):
     """Test analyzer can analyze all cells."""
-    from parser import NotebookParser
+    from nb2prod.parser import NotebookParser
 
     parser = NotebookParser(sample_notebook)
     parser.parse()
@@ -33,7 +33,7 @@ def test_analyzer_analyzes_cells(sample_notebook):
 
 def test_analyzer_gets_summary(sample_notebook):
     """Test analyzer produces summary."""
-    from parser import NotebookParser
+    from nb2prod.parser import NotebookParser
 
     parser = NotebookParser(sample_notebook)
     parser.parse()
@@ -51,7 +51,7 @@ def test_analyzer_gets_summary(sample_notebook):
 
 def test_analyzer_detects_imports(sample_notebook):
     """Test analyzer detects imports."""
-    from parser import NotebookParser
+    from nb2prod.parser import NotebookParser
 
     parser = NotebookParser(sample_notebook)
     parser.parse()
@@ -67,7 +67,7 @@ def test_analyzer_detects_imports(sample_notebook):
 
 def test_analyzer_detects_functions(sample_notebook):
     """Test analyzer detects function definitions."""
-    from parser import NotebookParser
+    from nb2prod.parser import NotebookParser
 
     parser = NotebookParser(sample_notebook)
     parser.parse()
