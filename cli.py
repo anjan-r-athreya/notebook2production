@@ -24,8 +24,8 @@ def cli():
 
 
 @cli.command()
-@click.argument('notebook', type=click.Path(exists=True))
-@click.option('--detailed', is_flag=True, help='Show detailed analysis')
+@click.argument("notebook", type=click.Path(exists=True))
+@click.option("--detailed", is_flag=True, help="Show detailed analysis")
 def analyze(notebook, detailed):
     """Analyze a notebook for production readiness.
 
@@ -55,7 +55,7 @@ def analyze(notebook, detailed):
 
     # Analyze code
     code_cells = parser.get_code_cells()
-    stats = data['stats']
+    stats = data["stats"]
 
     if not code_cells:
         console.print("[yellow]No code cells found in notebook[/yellow]")
@@ -66,28 +66,30 @@ def analyze(notebook, detailed):
     summary = analyzer.get_summary()
 
     # Display compact summary
-    console.print(f"[dim]Code cells: {stats['code_cells']} | "
-                  f"Functions: {summary['total_functions']} | "
-                  f"Imports: {summary['total_imports']}[/dim]")
+    console.print(
+        f"[dim]Code cells: {stats['code_cells']} | "
+        f"Functions: {summary['total_functions']} | "
+        f"Imports: {summary['total_imports']}[/dim]"
+    )
     console.print()
 
     # Show imports if detailed
-    if detailed and summary['imports_list']:
+    if detailed and summary["imports_list"]:
         console.print("[bold]Dependencies:[/bold]")
-        for imp in summary['imports_list']:
+        for imp in summary["imports_list"]:
             console.print(f"  - {imp}")
         console.print()
 
     # Filter and display only actionable issues
-    issues = summary['issues']
+    issues = summary["issues"]
     actionable_issues = []
 
     for issue in issues:
-        issue_type = issue['type']
+        issue_type = issue["type"]
 
         # Skip "no functions" for notebooks with mostly markdown (likely educational)
-        if issue_type == 'no_functions':
-            markdown_ratio = stats['markdown_cells'] / max(stats['total_cells'], 1)
+        if issue_type == "no_functions":
+            markdown_ratio = stats["markdown_cells"] / max(stats["total_cells"], 1)
             if markdown_ratio > 0.3:  # More than 30% markdown = likely educational
                 continue
 
@@ -98,39 +100,45 @@ def analyze(notebook, detailed):
         console.print()
 
         for issue in actionable_issues:
-            issue_type = issue['type']
+            issue_type = issue["type"]
 
-            if issue_type == 'execution_order':
-                console.print(Panel(
-                    f"[yellow]{issue['message']}[/yellow]\n\n"
-                    f"[dim]Impact:[/dim] This cell depends on variables defined in a later cell. "
-                    f"The notebook will fail if cells are run sequentially from top to bottom.\n\n"
-                    f"[dim]Fix:[/dim] Reorder cells or ensure all dependencies are defined before use.",
-                    title="Execution Order Problem",
-                    border_style="yellow"
-                ))
+            if issue_type == "execution_order":
+                console.print(
+                    Panel(
+                        f"[yellow]{issue['message']}[/yellow]\n\n"
+                        f"[dim]Impact:[/dim] This cell depends on variables defined in a later cell. "
+                        f"The notebook will fail if cells are run sequentially from top to bottom.\n\n"
+                        f"[dim]Fix:[/dim] Reorder cells or ensure all dependencies are defined before use.",
+                        title="Execution Order Problem",
+                        border_style="yellow",
+                    )
+                )
 
-            elif issue_type == 'hardcoded_paths':
-                cells_str = ', '.join(map(str, issue['cells'][:10]))
-                if len(issue['cells']) > 10:
+            elif issue_type == "hardcoded_paths":
+                cells_str = ", ".join(map(str, issue["cells"][:10]))
+                if len(issue["cells"]) > 10:
                     cells_str += f" ... and {len(issue['cells']) - 10} more"
 
-                console.print(Panel(
-                    f"[yellow]Found hardcoded file paths in cells: {cells_str}[/yellow]\n\n"
-                    f"[dim]Impact:[/dim] Code won't be portable across different environments.\n\n"
-                    f"[dim]Fix:[/dim] Move paths to a configuration file or use relative paths.",
-                    title="Configuration Issue",
-                    border_style="yellow"
-                ))
+                console.print(
+                    Panel(
+                        f"[yellow]Found hardcoded file paths in cells: {cells_str}[/yellow]\n\n"
+                        f"[dim]Impact:[/dim] Code won't be portable across different environments.\n\n"
+                        f"[dim]Fix:[/dim] Move paths to a configuration file or use relative paths.",
+                        title="Configuration Issue",
+                        border_style="yellow",
+                    )
+                )
 
-            elif issue_type == 'no_functions':
-                console.print(Panel(
-                    f"[yellow]{issue['message']}[/yellow]\n\n"
-                    f"[dim]Impact:[/dim] Code is harder to test, reuse, and maintain.\n\n"
-                    f"[dim]Fix:[/dim] Extract logical blocks into functions with clear inputs/outputs.",
-                    title="Code Organization",
-                    border_style="yellow"
-                ))
+            elif issue_type == "no_functions":
+                console.print(
+                    Panel(
+                        f"[yellow]{issue['message']}[/yellow]\n\n"
+                        f"[dim]Impact:[/dim] Code is harder to test, reuse, and maintain.\n\n"
+                        f"[dim]Fix:[/dim] Extract logical blocks into functions with clear inputs/outputs.",
+                        title="Code Organization",
+                        border_style="yellow",
+                    )
+                )
 
             console.print()
     else:
@@ -140,11 +148,11 @@ def analyze(notebook, detailed):
     # Calculate production readiness score based on actionable issues only
     score = 10
     for issue in actionable_issues:
-        if issue['type'] == 'execution_order':
+        if issue["type"] == "execution_order":
             score -= 4  # Critical issue
-        elif issue['type'] == 'hardcoded_paths':
+        elif issue["type"] == "hardcoded_paths":
             score -= 2  # Moderate issue
-        elif issue['type'] == 'no_functions':
+        elif issue["type"] == "no_functions":
             score -= 2  # Moderate issue
 
     score = max(0, min(10, score))
@@ -166,7 +174,7 @@ def analyze(notebook, detailed):
             f"[bold {score_color}]{score}/10[/bold {score_color}]\n\n{assessment}",
             title="Production Readiness Assessment",
             border_style=score_color,
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
         console.print(score_panel)
         console.print()
@@ -178,20 +186,22 @@ def analyze(notebook, detailed):
 
         has_dependencies = False
         for analysis in results:
-            if analysis['depends_on'] or analysis['external_dependencies']:
+            if analysis["depends_on"] or analysis["external_dependencies"]:
                 has_dependencies = True
                 cell_info = []
 
-                if analysis['external_dependencies']:
-                    deps_list = list(analysis['external_dependencies'])[:5]
+                if analysis["external_dependencies"]:
+                    deps_list = list(analysis["external_dependencies"])[:5]
                     cell_info.append(f"Uses: {', '.join(deps_list)}")
 
-                if analysis['depends_on']:
-                    deps = [str(d['cell_index']) for d in analysis['depends_on'][:3]]
+                if analysis["depends_on"]:
+                    deps = [str(d["cell_index"]) for d in analysis["depends_on"][:3]]
                     cell_info.append(f"From cells: {', '.join(deps)}")
 
                 if cell_info:
-                    console.print(f"  Cell {analysis['index']}: {' | '.join(cell_info)}")
+                    console.print(
+                        f"  Cell {analysis['index']}: {' | '.join(cell_info)}"
+                    )
 
         if not has_dependencies:
             console.print("  [dim]No cross-cell dependencies detected.[/dim]")
@@ -203,8 +213,8 @@ def analyze(notebook, detailed):
 
 
 @cli.command()
-@click.argument('notebook', type=click.Path(exists=True))
-@click.option('--show-code', is_flag=True, help='Show generated function code')
+@click.argument("notebook", type=click.Path(exists=True))
+@click.option("--show-code", is_flag=True, help="Show generated function code")
 def extract(notebook, show_code):
     """Extract function suggestions from notebook.
 
@@ -243,20 +253,28 @@ def extract(notebook, show_code):
     summary = analyzer.get_summary()
 
     # Check notebook quality from Phase 1 analysis
-    stats = data['stats']
-    has_execution_issues = any(issue['type'] == 'execution_order' for issue in summary['issues'])
-    has_critical_issues = len([i for i in summary['issues'] if i['type'] == 'execution_order']) > 1
+    stats = data["stats"]
+    has_execution_issues = any(
+        issue["type"] == "execution_order" for issue in summary["issues"]
+    )
+    has_critical_issues = (
+        len([i for i in summary["issues"] if i["type"] == "execution_order"]) > 1
+    )
 
     # Don't extract from broken notebooks
     if has_critical_issues:
         console.print("[yellow]Notebook Not Suitable for Extraction[/yellow]")
         console.print()
-        console.print("This notebook has critical issues that prevent function extraction:")
+        console.print(
+            "This notebook has critical issues that prevent function extraction:"
+        )
         console.print(f"  - Multiple execution order problems detected")
         console.print(f"  - Cells depend on later cells (backward dependencies)")
         console.print()
-        console.print("[dim]Fix the execution order issues first, then try extraction. "
-                     "Run 'nb2prod analyze' to see specific problems.[/dim]")
+        console.print(
+            "[dim]Fix the execution order issues first, then try extraction. "
+            "Run 'nb2prod analyze' to see specific problems.[/dim]"
+        )
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
@@ -270,13 +288,17 @@ def extract(notebook, show_code):
         console.print("[yellow]Educational/Tutorial Notebook Detected[/yellow]")
         console.print()
         console.print("This notebook appears to be educational with:")
-        console.print(f"  - {stats['markdown_cells']}/{stats['total_cells']} markdown cells (explanatory content)")
+        console.print(
+            f"  - {stats['markdown_cells']}/{stats['total_cells']} markdown cells (explanatory content)"
+        )
         console.print("  - Repetitive variable patterns (parallel examples)")
         console.print("  - Self-contained code cells (teaching concepts)")
         console.print()
-        console.print("[dim]Function extraction works best on production-style notebooks "
-                     "where cells represent a sequential workflow, not parallel examples. "
-                     "This notebook is designed for learning, not production deployment.[/dim]")
+        console.print(
+            "[dim]Function extraction works best on production-style notebooks "
+            "where cells represent a sequential workflow, not parallel examples. "
+            "This notebook is designed for learning, not production deployment.[/dim]"
+        )
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
@@ -292,17 +314,23 @@ def extract(notebook, show_code):
         reasons = []
 
         # Check for hardcoded paths
-        cells_with_paths = [a for a in results if a['has_hardcoded_paths']]
+        cells_with_paths = [a for a in results if a["has_hardcoded_paths"]]
         if cells_with_paths:
-            reasons.append(f"  - {len(cells_with_paths)} cell(s) contain hardcoded file paths")
+            reasons.append(
+                f"  - {len(cells_with_paths)} cell(s) contain hardcoded file paths"
+            )
 
         # Check for execution order issues
-        exec_issues = [issue for issue in summary['issues'] if issue['type'] == 'execution_order']
+        exec_issues = [
+            issue for issue in summary["issues"] if issue["type"] == "execution_order"
+        ]
         if exec_issues:
-            reasons.append(f"  - {len(exec_issues)} execution order problem(s) detected")
+            reasons.append(
+                f"  - {len(exec_issues)} execution order problem(s) detected"
+            )
 
         # Check if cells are too isolated
-        cells_with_deps = sum(1 for a in results if a.get('depends_on', []))
+        cells_with_deps = sum(1 for a in results if a.get("depends_on", []))
         if cells_with_deps < len(results) * 0.3:
             reasons.append("  - Cells appear too isolated (no clear workflow)")
 
@@ -311,11 +339,15 @@ def extract(notebook, show_code):
             for reason in reasons:
                 console.print(reason)
             console.print()
-            console.print("[dim]Fix these issues first (run 'nb2prod analyze' for details), "
-                         "then try extraction again.[/dim]")
+            console.print(
+                "[dim]Fix these issues first (run 'nb2prod analyze' for details), "
+                "then try extraction again.[/dim]"
+            )
         else:
             console.print("[dim]This notebook may not have clear function boundaries.")
-            console.print("Consider organizing code into logical sections with clear inputs/outputs.[/dim]")
+            console.print(
+                "Consider organizing code into logical sections with clear inputs/outputs.[/dim]"
+            )
 
         console.print()
         console.print("=" * 60, style="bold")
@@ -332,7 +364,7 @@ def extract(notebook, show_code):
     # Display function suggestions
     for i, func in enumerate(functions, 1):
         # Create a panel for each function
-        cells_str = ', '.join(map(str, func['cells']))
+        cells_str = ", ".join(map(str, func["cells"]))
 
         content_lines = [
             f"[bold cyan]{func['signature']}[/bold cyan]",
@@ -341,17 +373,21 @@ def extract(notebook, show_code):
             f"[dim]Source cells:[/dim] {cells_str}",
         ]
 
-        if func['parameters']:
-            content_lines.append(f"[dim]Parameters:[/dim] {', '.join(func['parameters'])}")
+        if func["parameters"]:
+            content_lines.append(
+                f"[dim]Parameters:[/dim] {', '.join(func['parameters'])}"
+            )
 
-        if func['returns']:
+        if func["returns"]:
             content_lines.append(f"[dim]Returns:[/dim] {', '.join(func['returns'])}")
 
-        console.print(Panel(
-            '\n'.join(content_lines),
-            title=f"Function {i}: {func['name']}",
-            border_style="cyan"
-        ))
+        console.print(
+            Panel(
+                "\n".join(content_lines),
+                title=f"Function {i}: {func['name']}",
+                border_style="cyan",
+            )
+        )
 
         # Show code if requested
         if show_code:
@@ -368,9 +404,15 @@ def extract(notebook, show_code):
 
 
 @cli.command()
-@click.argument('notebook', type=click.Path(exists=True))
-@click.option('--output', '-o', default='./output', help='Output directory for generated project')
-@click.option('--enhance', is_flag=True, help='Use Claude AI to enhance functions (requires ANTHROPIC_API_KEY)')
+@click.argument("notebook", type=click.Path(exists=True))
+@click.option(
+    "--output", "-o", default="./output", help="Output directory for generated project"
+)
+@click.option(
+    "--enhance",
+    is_flag=True,
+    help="Use Claude AI to enhance functions (requires ANTHROPIC_API_KEY)",
+)
 def convert(notebook, output, enhance):
     """Convert notebook to production-ready Python project.
 
@@ -400,7 +442,7 @@ def convert(notebook, output, enhance):
         return
 
     code_cells = parser.get_code_cells()
-    stats = data['stats']
+    stats = data["stats"]
 
     if not code_cells:
         console.print("[yellow]No code cells found in notebook[/yellow]")
@@ -412,7 +454,9 @@ def convert(notebook, output, enhance):
     summary = analyzer.get_summary()
 
     # Check notebook quality
-    has_critical_issues = len([i for i in summary['issues'] if i['type'] == 'execution_order']) > 1
+    has_critical_issues = (
+        len([i for i in summary["issues"] if i["type"] == "execution_order"]) > 1
+    )
 
     if has_critical_issues:
         console.print("[yellow]Notebook Not Suitable for Conversion[/yellow]")
@@ -421,8 +465,10 @@ def convert(notebook, output, enhance):
         console.print(f"  - Multiple execution order problems detected")
         console.print(f"  - Cells depend on later cells (backward dependencies)")
         console.print()
-        console.print("[dim]Fix the execution order issues first, then try conversion. "
-                     "Run 'nb2prod analyze' to see specific problems.[/dim]")
+        console.print(
+            "[dim]Fix the execution order issues first, then try conversion. "
+            "Run 'nb2prod analyze' to see specific problems.[/dim]"
+        )
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
@@ -438,7 +484,9 @@ def convert(notebook, output, enhance):
         console.print("This appears to be an educational notebook.")
         console.print("Conversion works best on production-style notebooks.")
         console.print()
-        console.print("[dim]Continue anyway? The generated project may not be useful.[/dim]")
+        console.print(
+            "[dim]Continue anyway? The generated project may not be useful.[/dim]"
+        )
         console.print()
         console.print("=" * 60, style="bold")
         console.print()
@@ -491,9 +539,9 @@ def convert(notebook, output, enhance):
 
     generator = ProjectGenerator(
         functions=functions,
-        imports=summary['imports_list'],
+        imports=summary["imports_list"],
         output_dir=output,
-        use_llm_main=enhance
+        use_llm_main=enhance,
     )
 
     try:
@@ -509,11 +557,12 @@ def convert(notebook, output, enhance):
     except Exception as e:
         console.print(f"[bold red]Error generating project:[/bold red] {e}")
         import traceback
+
         traceback.print_exc()
 
     console.print("=" * 60, style="bold")
     console.print()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

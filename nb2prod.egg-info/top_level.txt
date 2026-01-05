@@ -5,3 +5,4 @@ grouper
 llm_refactor
 parser
 simple_analyze
+tests

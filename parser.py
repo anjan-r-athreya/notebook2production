@@ -31,18 +31,28 @@ class NotebookParser:
         if not self.notebook_path.exists():
             raise FileNotFoundError(f"Notebook not found: {self.notebook_path}")
 
+        if not self.notebook_path.suffix == ".ipynb":
+            raise ValueError(
+                f"File must be a Jupyter notebook (.ipynb): {self.notebook_path}"
+            )
+
         # Read notebook
-        with open(self.notebook_path, 'r', encoding='utf-8') as f:
-            self.notebook = nbformat.read(f, as_version=4)
+        try:
+            with open(self.notebook_path, "r", encoding="utf-8") as f:
+                self.notebook = nbformat.read(f, as_version=4)
+        except nbformat.reader.NotJSONError as e:
+            raise ValueError(f"Invalid notebook format (not valid JSON): {e}")
+        except Exception as e:
+            raise ValueError(f"Failed to read notebook: {e}")
 
         # Extract cells
         self.cells = self._extract_cells()
 
         return {
-            'path': str(self.notebook_path),
-            'cells': self.cells,
-            'metadata': self.notebook.get('metadata', {}),
-            'stats': self._get_stats()
+            "path": str(self.notebook_path),
+            "cells": self.cells,
+            "metadata": self.notebook.get("metadata", {}),
+            "stats": self._get_stats(),
         }
 
     def _extract_cells(self) -> List[Dict[str, Any]]:
@@ -54,20 +64,20 @@ class NotebookParser:
         cells = []
         for idx, cell in enumerate(self.notebook.cells):
             cell_data = {
-                'index': idx,
-                'type': cell.cell_type,
-                'source': cell.source,
-                'execution_count': cell.get('execution_count'),
-                'outputs': []
+                "index": idx,
+                "type": cell.cell_type,
+                "source": cell.source,
+                "execution_count": cell.get("execution_count"),
+                "outputs": [],
             }
 
             # Extract outputs for code cells
-            if cell.cell_type == 'code' and hasattr(cell, 'outputs'):
-                cell_data['outputs'] = [
+            if cell.cell_type == "code" and hasattr(cell, "outputs"):
+                cell_data["outputs"] = [
                     {
-                        'output_type': output.get('output_type'),
-                        'data': output.get('data', {}),
-                        'text': output.get('text', '')
+                        "output_type": output.get("output_type"),
+                        "data": output.get("data", {}),
+                        "text": output.get("text", ""),
                     }
                     for output in cell.outputs
                 ]
@@ -82,14 +92,14 @@ class NotebookParser:
         Returns:
             Dictionary with counts of different cell types and elements
         """
-        code_cells = [c for c in self.cells if c['type'] == 'code']
-        markdown_cells = [c for c in self.cells if c['type'] == 'markdown']
+        code_cells = [c for c in self.cells if c["type"] == "code"]
+        markdown_cells = [c for c in self.cells if c["type"] == "markdown"]
 
         return {
-            'total_cells': len(self.cells),
-            'code_cells': len(code_cells),
-            'markdown_cells': len(markdown_cells),
-            'empty_cells': sum(1 for c in self.cells if not c['source'].strip())
+            "total_cells": len(self.cells),
+            "code_cells": len(code_cells),
+            "markdown_cells": len(markdown_cells),
+            "empty_cells": sum(1 for c in self.cells if not c["source"].strip()),
         }
 
     def get_code_cells(self) -> List[Dict[str, Any]]:
@@ -98,4 +108,4 @@ class NotebookParser:
         Returns:
             List of code cell dictionaries
         """
-        return [c for c in self.cells if c['type'] == 'code' and c['source'].strip()]
+        return [c for c in self.cells if c["type"] == "code" and c["source"].strip()]

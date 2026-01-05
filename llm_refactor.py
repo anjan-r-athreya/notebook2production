@@ -14,7 +14,7 @@ class LLMRefactor:
         Args:
             api_key: Anthropic API key. If None, reads from ANTHROPIC_API_KEY env var
         """
-        self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
+        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError(
                 "Anthropic API key required. Set ANTHROPIC_API_KEY environment variable "
@@ -24,9 +24,7 @@ class LLMRefactor:
         self.client = anthropic.Anthropic(api_key=self.api_key)
 
     def enhance_functions(
-        self,
-        functions: List[Dict[str, Any]],
-        notebook_context: str = ""
+        self, functions: List[Dict[str, Any]], notebook_context: str = ""
     ) -> List[Dict[str, Any]]:
         """Enhance extracted functions using Claude.
 
@@ -43,7 +41,9 @@ class LLMRefactor:
             print(f"Enhancing function {i+1}/{len(functions)}: {func['name']}")
 
             try:
-                enhanced = self._enhance_single_function(func, functions, notebook_context)
+                enhanced = self._enhance_single_function(
+                    func, functions, notebook_context
+                )
                 enhanced_functions.append(enhanced)
             except Exception as e:
                 print(f"  Warning: Enhancement failed, using original: {e}")
@@ -58,7 +58,7 @@ class LLMRefactor:
         self,
         func: Dict[str, Any],
         all_functions: List[Dict[str, Any]],
-        notebook_context: str
+        notebook_context: str,
     ) -> Dict[str, Any]:
         """Enhance a single function using Claude.
 
@@ -112,7 +112,7 @@ Respond with a JSON object:
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4000,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
         )
 
         # Parse Claude's response
@@ -120,25 +120,21 @@ Respond with a JSON object:
 
         # Update function with enhanced version
         enhanced = func.copy()
-        enhanced['name'] = result.get('name', func['name'])
-        enhanced['parameters'] = result.get('parameters', func['parameters'])
-        enhanced['returns'] = result.get('returns', func['returns'])
-        enhanced['docstring'] = result.get('docstring', func.get('docstring', ''))
-        enhanced['full_code'] = result.get('code', func['full_code'])
+        enhanced["name"] = result.get("name", func["name"])
+        enhanced["parameters"] = result.get("parameters", func["parameters"])
+        enhanced["returns"] = result.get("returns", func["returns"])
+        enhanced["docstring"] = result.get("docstring", func.get("docstring", ""))
+        enhanced["full_code"] = result.get("code", func["full_code"])
 
         # Regenerate signature
-        enhanced['signature'] = self._generate_signature(
-            enhanced['name'],
-            enhanced['parameters'],
-            enhanced['returns']
+        enhanced["signature"] = self._generate_signature(
+            enhanced["name"], enhanced["parameters"], enhanced["returns"]
         )
 
         return enhanced
 
     def _build_function_context(
-        self,
-        all_functions: List[Dict[str, Any]],
-        current_func: Dict[str, Any]
+        self, all_functions: List[Dict[str, Any]], current_func: Dict[str, Any]
     ) -> str:
         """Build context string about other functions.
 
@@ -177,12 +173,12 @@ Respond with a JSON object:
 
         # Try to extract JSON from response
         # Claude might wrap it in markdown code blocks
-        json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+        json_match = re.search(r"```json\s*(.*?)\s*```", response_text, re.DOTALL)
         if json_match:
             json_str = json_match.group(1)
         else:
             # Try to find raw JSON
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
             if json_match:
                 json_str = json_match.group(0)
             else:
@@ -191,10 +187,7 @@ Respond with a JSON object:
         return json.loads(json_str)
 
     def _generate_signature(
-        self,
-        name: str,
-        parameters: List[str],
-        returns: List[str]
+        self, name: str, parameters: List[str], returns: List[str]
     ) -> str:
         """Generate function signature.
 
@@ -206,7 +199,7 @@ Respond with a JSON object:
         Returns:
             Signature string
         """
-        params_str = ', '.join(parameters) if parameters else ''
+        params_str = ", ".join(parameters) if parameters else ""
 
         if returns:
             if len(returns) == 1:
@@ -219,8 +212,7 @@ Respond with a JSON object:
         return f"def {name}({params_str}){return_hint}:"
 
     def _fix_dependencies(
-        self,
-        functions: List[Dict[str, Any]]
+        self, functions: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Fix cross-function dependencies.
 
@@ -236,26 +228,24 @@ Respond with a JSON object:
         available_vars = {}  # var_name -> function_index
 
         for i, func in enumerate(functions):
-            for ret in func['returns']:
+            for ret in func["returns"]:
                 available_vars[ret] = i
 
         # Update parameters for each function based on what it needs
         for i, func in enumerate(functions):
-            needed_vars = set(func['parameters'])
+            needed_vars = set(func["parameters"])
 
             # Check which needed vars are available from previous functions
             for var in needed_vars:
                 if var in available_vars and available_vars[var] < i:
                     # This var is available from an earlier function
-                    if var not in func['parameters']:
-                        func['parameters'].append(var)
+                    if var not in func["parameters"]:
+                        func["parameters"].append(var)
 
         return functions
 
     def generate_enhanced_main(
-        self,
-        functions: List[Dict[str, Any]],
-        imports: List[str]
+        self, functions: List[Dict[str, Any]], imports: List[str]
     ) -> str:
         """Generate an enhanced main.py with proper function chaining.
 
@@ -283,7 +273,7 @@ Generate a complete, working main.py file."""
         response = self.client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
         )
 
         # Extract code from response
@@ -293,22 +283,22 @@ Generate a complete, working main.py file."""
         import re
 
         # Try ```python first
-        code_match = re.search(r'```python\s*\n(.*?)\n```', code, re.DOTALL)
+        code_match = re.search(r"```python\s*\n(.*?)\n```", code, re.DOTALL)
         if code_match:
             code = code_match.group(1)
         else:
             # Try generic ``` code blocks
-            code_match = re.search(r'```\s*\n(.*?)\n```', code, re.DOTALL)
+            code_match = re.search(r"```\s*\n(.*?)\n```", code, re.DOTALL)
             if code_match:
                 code = code_match.group(1)
             else:
                 # If no code blocks found, strip leading/trailing markdown artifacts
                 code = code.strip()
-                if code.startswith('```python'):
-                    code = code[len('```python'):].strip()
-                if code.startswith('```'):
+                if code.startswith("```python"):
+                    code = code[len("```python") :].strip()
+                if code.startswith("```"):
                     code = code[3:].strip()
-                if code.endswith('```'):
+                if code.endswith("```"):
                     code = code[:-3].strip()
 
         return code
