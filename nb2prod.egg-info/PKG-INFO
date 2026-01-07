@@ -61,6 +61,23 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
+### Web Interface (Recommended)
+
+Launch the web interface for an easy-to-use graphical experience:
+
+```bash
+streamlit run app.py
+```
+
+Then open your browser to `http://localhost:8501` and:
+1. Upload your .ipynb file
+2. View analysis results and production readiness score
+3. Extract and preview functions
+4. Convert to a production project (with optional AI enhancement)
+5. Download the generated project as a ZIP file
+
+### Command Line Interface
+
 ### 1. Analyze a Notebook
 
 ```bash

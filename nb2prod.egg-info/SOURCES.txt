@@ -5,8 +5,14 @@ CONTRIBUTING.md
 LICENSE
 MANIFEST.in
 README.md
+nb2prod-cli
 pyproject.toml
 setup.py
+docs/IMPLEMENTATION_PLAN.md
+docs/PRODUCT_SPEC.md
+docs/USER_FLOW.md
+docs/old_README.md
+examples/customer_churn_prediction.ipynb
 nb2prod/__init__.py
 nb2prod/analyzer.py
 nb2prod/cli.py

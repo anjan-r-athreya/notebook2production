@@ -25,6 +25,7 @@ setup(
         "rich>=10.0.0",
         "pyyaml>=6.0.0",
         "anthropic>=0.18.0",
+        "streamlit>=1.28.0",
     ],
     extras_require={
         "dev": [

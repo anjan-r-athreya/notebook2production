@@ -30,6 +30,23 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
+### Web Interface (Recommended)
+
+Launch the web interface for an easy-to-use graphical experience:
+
+```bash
+streamlit run app.py
+```
+
+Then open your browser to `http://localhost:8501` and:
+1. Upload your .ipynb file
+2. View analysis results and production readiness score
+3. Extract and preview functions
+4. Convert to a production project (with optional AI enhancement)
+5. Download the generated project as a ZIP file
+
+### Command Line Interface
+
 ### 1. Analyze a Notebook
 
 ```bash
@@ -127,6 +144,38 @@ The `--enhance` flag uses Claude AI to:
 export ANTHROPIC_API_KEY="your-api-key-here"
 nb2prod convert notebook.ipynb --enhance
 ```
+
+## Testing nb2prod
+
+We provide comprehensive test notebooks to help you explore all features:
+
+### Test Notebooks
+
+1. **`test_notebook.ipynb`** - Production ML Pipeline
+   - Realistic customer churn prediction workflow
+   - Tests successful analysis, extraction, and conversion
+   - Expected score: 6/10 (demonstrates typical improvement opportunities)
+
+2. **`problematic_notebook.ipynb`** - Error Detection
+   - Intentionally broken notebook with execution order issues
+   - Tests error detection and validation
+   - Expected score: 0/10 (demonstrates issue identification)
+
+### Quick Test
+
+```bash
+# Test analysis
+nb2prod analyze test_notebook.ipynb
+
+# Test function extraction
+nb2prod extract test_notebook.ipynb --show-code
+
+# Test web interface
+streamlit run app.py
+# Then upload test_notebook.ipynb
+```
+
+See [TEST_NOTEBOOKS.md](TEST_NOTEBOOKS.md) for complete testing guide and checklist.
 
 ## Development
 
